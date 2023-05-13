@@ -110,17 +110,41 @@ public class MovimientosServiceImpl implements MovimientosService {
 
     @Override
     public void crearMovimientoHaciaDisponible(BigDecimal importe, UUID idUsuario, String concepto, String logoConcepto) {
-
+        Movimiento movimiento = Movimiento.builder()
+                                        .importe(importe)
+                                        .tipo(TipoMovimiento.TRANSFERENCIA_HACIA_DISPONIBLE)
+                                        .concepto(concepto)
+                                        .logoConcepto(logoConcepto)
+                                        .usuario(Usuario.builder().id(idUsuario).build())
+                                        .presupuesto(null)
+                                        .contabilizable(true)
+                                        .build();
+        movimientosRepository.save(movimiento);
+        balanceService.aumentarBalanceByUsuario(importe, idUsuario);
     }
 
     @Override
     public void crearMovimientoDesdeDisponible(BigDecimal importe, UUID idUsuario, String concepto, String logoConcepto) {
-
+        Movimiento movimiento = Movimiento.builder()
+                                        .importe(importe)
+                                        .tipo(TipoMovimiento.TRANSFERENCIA_DESDE_DISPONIBLE)
+                                        .concepto(concepto)
+                                        .logoConcepto(logoConcepto)
+                                        .usuario(Usuario.builder().id(idUsuario).build())
+                                        .presupuesto(null)
+                                        .contabilizable(true)
+                                        .build();
+        movimientosRepository.save(movimiento);
+        balanceService.disminuirBalanceByUsuario(importe, idUsuario);
     }
 
     @Override
     public void createMovimientoDescuentoACuentaEspecifica(Movimiento movimiento, UUID idCuentaAhorroEspecifica) {
-
+        movimientosRepository.save(movimiento);
+        Movimiento movimientoConDescuento = condicionesService.applyCondicionToSpecificAhorro(movimiento, idCuentaAhorroEspecifica);
+        double importeDescuento = movimiento.getImporte().doubleValue() - movimientoConDescuento.getImporte().doubleValue();
+        crearMovimientoDesdeDisponible(BigDecimal.valueOf(importeDescuento), movimiento.getUsuario().getId(), "ahorro", "logo_ahorro");
+        balanceService.disminuirBalanceByUsuario(movimiento.getImporte(), movimiento.getUsuario().getId());
     }
 
     @Override
